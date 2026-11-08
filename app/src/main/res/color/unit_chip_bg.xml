@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fill for the unit chips: a light pill when checked, bare outline when not. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:color="@color/hm_on_image_checked_container"
+        android:state_checked="true" />
+    <item android:color="@android:color/transparent" />
+</selector>

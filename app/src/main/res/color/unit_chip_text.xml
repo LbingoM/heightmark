@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Label colour for the unit chips. Set explicitly rather than left to
+    colorPrimary: the Material button style resolves that attribute through its
+    own theme overlay, so the on-image overlay's value never reached the label
+    and the unchecked chip drew brand green on the dark scrim — effectively
+    invisible in both states' partner.
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:color="@color/hm_on_image_on_checked_container"
+        android:state_checked="true" />
+    <item android:color="@color/hm_on_scrim" />
+</selector>

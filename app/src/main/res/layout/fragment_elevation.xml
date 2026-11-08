@@ -104,10 +104,13 @@
                      fragment decides, so the layout never sets visibility. -->
                 <TextView
                     android:id="@+id/barometer_warning"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="14dp"
+                    android:background="@drawable/bg_warning_chip"
                     android:gravity="center"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="5dp"
                     android:text="@string/no_barometer_warning"
                     android:textColor="@color/hm_on_scrim_warning"
                     android:textSize="12.5sp"
@@ -146,7 +149,10 @@
                         android:contentDescription="@string/unit_meters_spoken"
                         android:minHeight="@dimen/min_touch_target"
                         android:minWidth="@dimen/unit_chip_min_width"
-                        android:text="@string/unit_meters" />
+                        android:text="@string/unit_meters"
+                        android:textColor="@color/unit_chip_text"
+                        app:backgroundTint="@color/unit_chip_bg"
+                        app:strokeColor="@color/hm_on_scrim_outline" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/button_feet"
@@ -156,7 +162,10 @@
                         android:contentDescription="@string/unit_feet_spoken"
                         android:minHeight="@dimen/min_touch_target"
                         android:minWidth="@dimen/unit_chip_min_width"
-                        android:text="@string/unit_feet" />
+                        android:text="@string/unit_feet"
+                        android:textColor="@color/unit_chip_text"
+                        app:backgroundTint="@color/unit_chip_bg"
+                        app:strokeColor="@color/hm_on_scrim_outline" />
                 </com.google.android.material.button.MaterialButtonToggleGroup>
 
                 <com.google.android.material.button.MaterialButton

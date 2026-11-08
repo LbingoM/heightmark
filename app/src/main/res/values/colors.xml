@@ -22,6 +22,11 @@
          both clearing the WCAG 1.4.3 AA threshold of 4.5:1.
          ScrimContrastTest verifies this relationship. -->
     <color name="hm_scrim_floor">#99000000</color>
+    <!-- The bottom of the scrim. Pure black drains every hue out of the artwork
+         and leaves it looking greyed over; a deep pine ink keeps a cool cast,
+         so the screen reads as dusk instead of a grey film. Its own contrast
+         against white text is asserted in ScrimContrastTest. -->
+    <color name="hm_scrim_deep">#C70C1512</color>
 
     <!-- Checked-chip pair for controls on the scrimmed image
          (ThemeOverlay.HeightMark.OnImage). Same values as the light-scheme

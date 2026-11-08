@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The barometer notice reads as a label, not as an error banner: a small
+     tinted pill rather than a full-width line of red text. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#33FF8A80" />
+    <corners android:radius="100dp" />
+</shape>

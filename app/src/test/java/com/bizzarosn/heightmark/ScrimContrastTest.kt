@@ -40,6 +40,16 @@ class ScrimContrastTest {
         assertAtLeast(4.5, contrast(white, scrimmedBackdrop), "hm_on_scrim text")
     }
 
+    /**
+     * The bottom of the scrim is no longer pure black but deep pine ink, and the
+     * reading sits on it. Same requirement, measured against that stop.
+     */
+    @Test
+    fun `reading over the deep scrim meets 4_5 to 1`() {
+        val deep = resourceColor("hm_scrim_deep").over(worstCaseBackdrop)
+        assertAtLeast(4.5, contrast(Rgb(1.0, 1.0, 1.0), deep), "white over hm_scrim_deep")
+    }
+
     @Test
     fun `secondary on-scrim text meets 4_5 to 1`() {
         val secondary = resourceColor("hm_on_scrim_secondary").over(scrimmedBackdrop)

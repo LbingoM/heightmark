@@ -16,8 +16,9 @@
         <shape>
             <gradient
                 android:angle="90"
-                android:startColor="@color/hm_scrim_overlay"
-                android:endColor="@color/hm_scrim_floor" />
+                android:centerColor="@color/hm_scrim_overlay"
+                android:endColor="@color/hm_scrim_floor"
+                android:startColor="@color/hm_scrim_deep" />
         </shape>
     </item>
 </layer-list>

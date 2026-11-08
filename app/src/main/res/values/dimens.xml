@@ -3,7 +3,7 @@
     <!-- Height of bg_bottom_scrim's fade-to-transparent band. Must equal
          content_container's top padding so all text sits on the solid part
          of the scrim (see bg_bottom_scrim.xml). -->
-    <dimen name="scrim_fade_height">48dp</dimen>
+    <dimen name="scrim_fade_height">120dp</dimen>
 
     <!-- WCAG 2.5.8 / Material minimum touch target -->
     <dimen name="min_touch_target">48dp</dimen>
