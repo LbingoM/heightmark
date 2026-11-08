@@ -3,7 +3,9 @@ package com.bizzarosn.heightmark
 import android.content.Context
 import android.location.Location
 import android.location.altitude.AltitudeConverter
+import android.os.Build
 import android.util.Log
+import androidx.annotation.MainThread
 import androidx.annotation.WorkerThread
 import java.io.IOException
 
@@ -55,6 +57,29 @@ class AltitudeResolver(
             logFailureOnce("Location rejected by AltitudeConverter, using ellipsoid altitude", e)
             location.ellipsoidHeight()
         }
+    }
+
+    /**
+     * The same conversion attempted on the calling thread. API 35 added
+     * [AltitudeConverter.tryAddMslAltitudeToLocation], which never loads raw
+     * assets, so once the geoid data is loaded every fix converts in place
+     * instead of paying a hop to a worker thread and back. Null means the data
+     * is not loaded yet: the caller then falls back to [resolve] off the main
+     * thread, which loads it for the next one.
+     */
+    @MainThread
+    @Synchronized
+    fun tryResolve(location: Location): Elevation? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return null
+        val added = try {
+            converter.tryAddMslAltitudeToLocation(location)
+        } catch (e: IllegalArgumentException) {
+            logFailureOnce("Location rejected by AltitudeConverter, using ellipsoid altitude", e)
+            return null
+        }
+        if (!added) return null
+        failureLogged = false
+        return Elevation(location.mslAltitudeMeters, ElevationDatum.MEAN_SEA_LEVEL)
     }
 
     /**

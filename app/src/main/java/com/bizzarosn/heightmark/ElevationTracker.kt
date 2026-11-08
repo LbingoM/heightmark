@@ -73,7 +73,7 @@ class ElevationTracker @Inject constructor(
 
     private val mainExecutor: Executor = ContextCompat.getMainExecutor(appContext)
 
-    private val detailsSources = DetailsSourcesController(locationManager, sensorManager) {
+    private val detailsSources = DetailsSourcesController(locationManager) {
         publish()
     }
 
@@ -82,7 +82,12 @@ class ElevationTracker @Inject constructor(
     // goIdle because the fix that tips the stillness detector is still
     // converted after the radio is off
     private val conversions = SerialConversion<Conversion, Elevation>(
-        convert = { withContext(Dispatchers.IO) { altitudeResolver.resolve(it.location) } },
+        convert = { conversion ->
+            // API 35 can convert in place once the geoid data is loaded, so only
+            // the first fix in a region pays for the worker thread
+            altitudeResolver.tryResolve(conversion.location)
+                ?: withContext(Dispatchers.IO) { altitudeResolver.resolve(conversion.location) }
+        },
         deliver = ::onConverted
     )
 
@@ -204,6 +209,9 @@ class ElevationTracker @Inject constructor(
     private fun startPressureUpdates() {
         if (pressureListener != null) return
         pressureListener = sensorManager.registerPressureListener(PRESSURE_SAMPLING_PERIOD_US) { hpa, at ->
+            // The details panel reads this value rather than arming a second
+            // barometer listener of its own
+            detailsSources.onPressure(hpa)
             if (session.onPressure(hpa, at)) publish()
         }
     }

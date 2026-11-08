@@ -1,7 +1,5 @@
 package com.bizzarosn.heightmark
 
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.location.GnssStatus
 import android.location.LocationManager
 import android.util.Log
@@ -22,19 +20,27 @@ import java.util.concurrent.Executor
  */
 class DetailsSourcesController(
     private val locationManager: LocationManager,
-    private val sensorManager: SensorManager,
     private val onUpdate: () -> Unit
 ) {
     var satellitesUsed: Int = 0
         private set
     var satellitesVisible: Int = 0
         private set
+
+    /**
+     * Fed by [ElevationTracker]'s own barometer listener. The panel used to
+     * register a second listener for this, which doubled the sensor callbacks —
+     * and their power cost — for as long as the panel was open.
+     */
     var pressureHpa: Float? = null
         private set
 
     private var gnssStatusCallback: GnssStatus.Callback? = null
-    private var pressureListener: SensorEventListener? = null
     private var tickerJob: Job? = null
+
+    fun onPressure(hpa: Float) {
+        pressureHpa = hpa
+    }
 
     fun start(executor: Executor, scope: CoroutineScope, hasFinePermission: Boolean) {
         if (gnssStatusCallback == null && hasFinePermission) {
@@ -51,12 +57,6 @@ class DetailsSourcesController(
             } catch (e: SecurityException) {
                 Log.e(TAG, "Cannot register GnssStatus callback", e)
             }
-        }
-
-        if (pressureListener == null) {
-            pressureListener = sensorManager.registerPressureListener(
-                PRESSURE_SAMPLING_PERIOD_US
-            ) { hpa, _ -> pressureHpa = hpa }
         }
 
         if (tickerJob == null) {
@@ -77,8 +77,6 @@ class DetailsSourcesController(
     fun stop() {
         gnssStatusCallback?.let { locationManager.unregisterGnssStatusCallback(it) }
         gnssStatusCallback = null
-        pressureListener?.let { sensorManager.unregisterListener(it) }
-        pressureListener = null
         tickerJob?.cancel()
         tickerJob = null
     }
@@ -86,8 +84,5 @@ class DetailsSourcesController(
     companion object {
         private const val TAG = "DetailsSources"
         private const val TICK_INTERVAL_MS = 1_000L
-
-        /** One sample per repaint of the 1 s ticker; the panel shows nothing faster. */
-        private const val PRESSURE_SAMPLING_PERIOD_US = 1_000_000
     }
 }
