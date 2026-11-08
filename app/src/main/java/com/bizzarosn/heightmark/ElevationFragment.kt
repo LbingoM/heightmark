@@ -151,8 +151,9 @@ class ElevationFragment : Fragment() {
             permissionHandler.checkPermission()
         }
 
-        // The region table is 1.4 MB of JSON: read and index it off the main
-        // thread, then repaint once it is available
+        // The region table is 600 KB of packed shorts: read and index it off the
+        // main thread, then repaint once it is available. It is cached per
+        // process, so a rotation does not pay for it again.
         val context = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
             val regions = withContext(Dispatchers.IO) { AdminRegions.load(context) }

@@ -3,7 +3,8 @@ package com.bizzarosn.heightmark
 import android.content.Context
 import android.util.Log
 import androidx.annotation.WorkerThread
-import org.json.JSONArray
+import java.io.BufferedInputStream
+import java.io.DataInputStream
 
 /**
  * Which province, city and district a fix falls in, answered from boundaries
@@ -20,7 +21,14 @@ import org.json.JSONArray
  *
  * Data: district-level boundaries (province / prefecture / county), simplified
  * to about 1 km. Coordinates are hundredths of a degree, matching that
- * simplification, which keeps the table at 1.4 MB.
+ * simplification, and are packed as fixed-width shorts rather than text.
+ *
+ * The packing is not premature: the 117,450 coordinates used to be JSON, and
+ * `org.json` turns every number into a boxed Double, so loading the table threw
+ * away well over a hundred thousand short-lived objects. That garbage was
+ * collected while the reading was on screen, which is exactly where a pause is
+ * noticed. Reading shorts allocates nothing but the arrays below, and the file
+ * is 600 KB instead of 1.4 MB.
  */
 class AdminRegions private constructor(
     private val names: Array<String>,
@@ -70,36 +78,68 @@ class AdminRegions private constructor(
 
     companion object {
         private const val TAG = "AdminRegions"
-        private const val ASSET = "china_districts.json"
+        private const val ASSET = "china_districts.bin"
+
+        /** Bumped whenever the byte layout changes; the reader rejects others. */
+        private const val FORMAT_VERSION = 1
+
+        /** Leading four bytes, so a truncated or foreign file fails loudly. */
+        private const val MAGIC = "HMRG"
+
+        private const val BUFFER_BYTES = 64 * 1024
 
         /**
-         * Reads and indexes the boundaries. Call off the main thread: parsing
-         * 1.4 MB of JSON takes a noticeable fraction of a second.
+         * Parsed once per process. The table is immutable, so a rotation should
+         * reuse it rather than re-read 600 KB and rebuild 2,851 rings.
+         */
+        @Volatile
+        private var cached: AdminRegions? = null
+
+        /**
+         * Reads and indexes the boundaries. Call off the main thread; the first
+         * call in a process does the work, later calls return the same table.
          */
         @WorkerThread
         fun load(context: Context): AdminRegions? {
+            cached?.let { return it }
+            val parsed = parse(context) ?: return null
+            cached = parsed
+            return parsed
+        }
+
+        /**
+         * Byte layout, big-endian to match [DataInputStream]: magic, format
+         * version, region count, then per region a UTF-8 name, a four-short
+         * bounding box and a ring, all coordinates in hundredths of a degree.
+         */
+        private fun parse(context: Context): AdminRegions? {
             return try {
-                val text = context.assets.open(ASSET).bufferedReader().use { it.readText() }
-                val array = JSONArray(text)
-                val count = array.length()
-                val names = Array(count) { "" }
-                val bounds = Array(count) { FloatArray(4) }
-                val rings = Array(count) { FloatArray(0) }
-                for (i in 0 until count) {
-                    val entry = array.getJSONObject(i)
-                    names[i] = entry.getString("n")
-                    val box = entry.getJSONArray("b")
-                    for (k in 0 until 4) {
-                        bounds[i][k] = box.getDouble(k).toFloat()
+                DataInputStream(
+                    BufferedInputStream(context.assets.open(ASSET), BUFFER_BYTES)
+                ).use { input ->
+                    val magic = ByteArray(4)
+                    input.readFully(magic)
+                    check(String(magic, Charsets.US_ASCII) == MAGIC) { "not a region table" }
+                    check(input.readUnsignedShort() == FORMAT_VERSION) { "unknown table version" }
+                    val count = input.readInt()
+                    val names = Array(count) { "" }
+                    val bounds = Array(count) { FloatArray(4) }
+                    val rings = Array(count) { FloatArray(0) }
+                    for (i in 0 until count) {
+                        val nameBytes = ByteArray(input.readUnsignedShort())
+                        input.readFully(nameBytes)
+                        names[i] = String(nameBytes, Charsets.UTF_8)
+                        for (k in 0 until 4) {
+                            bounds[i][k] = input.readUnsignedShort().toFloat()
+                        }
+                        val ring = FloatArray(input.readInt() * 2)
+                        for (k in ring.indices) {
+                            ring[k] = input.readUnsignedShort().toFloat()
+                        }
+                        rings[i] = ring
                     }
-                    val ring = entry.getJSONArray("p")
-                    val flat = FloatArray(ring.length())
-                    for (k in 0 until ring.length()) {
-                        flat[k] = ring.getDouble(k).toFloat()
-                    }
-                    rings[i] = flat
+                    AdminRegions(names, bounds, rings)
                 }
-                AdminRegions(names, bounds, rings)
             } catch (e: Exception) {
                 // An unreadable table must not take the panel down: the row just
                 // disappears
