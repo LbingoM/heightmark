@@ -53,6 +53,9 @@ class ElevationFragment : Fragment() {
     private lateinit var detailsToggle: TextView
     private lateinit var detailsPanel: ViewGroup
 
+    /** The text appearance currently on the hero number; see [applyTextAppearance]. */
+    private var appliedTextAppearanceAttr: Int? = null
+
     private var useMetricUnit = true
     private var showDetails = false
     private var hasRequestedLocationPermission = false
@@ -80,6 +83,10 @@ class ElevationFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // A fresh view starts at the layout's default appearance; the cache
+        // belongs to the view that is gone
+        appliedTextAppearanceAttr = null
 
         elevationLabel = view.findViewById(R.id.elevation_label)
         elevationTextView = view.findViewById(R.id.elevation_text_view)
@@ -380,6 +387,11 @@ class ElevationFragment : Fragment() {
     }
 
     private fun applyTextAppearance(textAppearanceAttr: Int) {
+        // Applied on every repaint, which is once a second even when nothing but
+        // the number changed. setTextAppearance requests a layout, so the whole
+        // tree was being re-measured every second to produce the same result.
+        if (appliedTextAppearanceAttr == textAppearanceAttr) return
+        appliedTextAppearanceAttr = textAppearanceAttr
         val resolved = TypedValue()
         requireContext().theme.resolveAttribute(textAppearanceAttr, resolved, true)
         elevationTextView.setTextAppearance(resolved.resourceId)

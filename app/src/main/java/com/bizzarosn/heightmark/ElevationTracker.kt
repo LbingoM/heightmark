@@ -87,6 +87,7 @@ class ElevationTracker @Inject constructor(
     )
 
     private var locationListener: LocationListener? = null
+    private var locationUpdatesRequested = false
     private var pressureListener: SensorEventListener? = null
     private var searchTimeoutJob: Job? = null
     private var fixWatchdogJob: Job? = null
@@ -228,6 +229,12 @@ class ElevationTracker @Inject constructor(
         // returns early while the monitor is armed, so the radio would stay on.
         if (session.isIdle) return
 
+        // A providers-changed broadcast and a repeated permission callback both
+        // land here while updates are already running. Re-registering would
+        // restart the search timeout and the fix watchdog, so a burst of
+        // broadcasts could push the stale-signal verdict out indefinitely.
+        if (locationUpdatesRequested) return
+
         conversions.start(viewModelScope)
         val listener = locationListener
             ?: LocationListener { location -> onGnssFix(location) }
@@ -250,6 +257,7 @@ class ElevationTracker @Inject constructor(
             block(ElevationUiState.Blocked.PermissionRequired)
             return
         }
+        locationUpdatesRequested = true
 
         updateBlocked(null)
         startSearchTimeout()
@@ -293,7 +301,10 @@ class ElevationTracker @Inject constructor(
         }
 
         val pending = session.offer(location) ?: return
-        conversions.submit(Conversion(location, pending))
+        // The geoid conversion adds its MSL fields to the Location it is given,
+        // and it runs on Dispatchers.IO. Hand it a copy: this instance is still
+        // held, and read, by the stillness detector on the main thread.
+        conversions.submit(Conversion(Location(location), pending))
     }
 
     private fun onConverted(conversion: Conversion, elevation: Elevation) {
@@ -344,6 +355,7 @@ class ElevationTracker @Inject constructor(
         searchTimeoutJob = null
         fixWatchdogJob?.cancel()
         fixWatchdogJob = null
+        locationUpdatesRequested = false
         locationListener?.let { listener ->
             locationManager.removeUpdates(listener)
         }

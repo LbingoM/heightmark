@@ -42,18 +42,32 @@ class AltitudeResolver(
         return try {
             converter.addMslAltitudeToLocation(context, location)
             if (location.hasMslAltitude()) {
+                failureLogged = false
                 Elevation(location.mslAltitudeMeters, ElevationDatum.MEAN_SEA_LEVEL)
             } else {
-                Log.w(TAG, "Converter left no MSL altitude, using ellipsoid altitude")
+                logFailureOnce("Converter left no MSL altitude, using ellipsoid altitude")
                 location.ellipsoidHeight()
             }
         } catch (e: IOException) {
-            Log.w(TAG, "Geoid data unavailable, using ellipsoid altitude", e)
+            logFailureOnce("Geoid data unavailable, using ellipsoid altitude", e)
             location.ellipsoidHeight()
         } catch (e: IllegalArgumentException) {
-            Log.w(TAG, "Location rejected by AltitudeConverter, using ellipsoid altitude", e)
+            logFailureOnce("Location rejected by AltitudeConverter, using ellipsoid altitude", e)
             location.ellipsoidHeight()
         }
+    }
+
+    /**
+     * True once the current run of failures has been logged. Conversion runs at
+     * 1 Hz, so an unbroken outage would otherwise format a stack trace every
+     * second for the rest of the session.
+     */
+    private var failureLogged = false
+
+    private fun logFailureOnce(message: String, cause: Throwable? = null) {
+        if (failureLogged) return
+        failureLogged = true
+        if (cause == null) Log.w(TAG, message) else Log.w(TAG, message, cause)
     }
 
     private fun Location.ellipsoidHeight() = Elevation(altitude, ElevationDatum.ELLIPSOID)

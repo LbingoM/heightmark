@@ -90,7 +90,18 @@ class ElevationSession @Inject constructor(
 
     /** Readings in the current session's window; the details panel shows it. */
     val readingCount: Int
-        get() = window.snapshot().readingCount
+        get() = currentSnapshot().readingCount
+
+    /**
+     * Cached summary of [window]. One repaint reads it through [readingCount],
+     * [readingState], [verdict] and [frameHeight]; each read is an O(n) weighted
+     * pass that allocates. The window only changes in [commit] and when it is
+     * folded or flushed, and both drop this, so the cache never outlives them.
+     */
+    private var cachedSnapshot: ElevationService.Snapshot? = null
+
+    private fun currentSnapshot(): ElevationService.Snapshot =
+        cachedSnapshot ?: window.snapshot().also { cachedSnapshot = it }
 
     private val odometer = BarometricOdometer()
     private val crossCheck = BarometerCrossCheck()
@@ -177,6 +188,7 @@ class ElevationSession @Inject constructor(
         if (start != null && pending.atNanos - start >= FOLD_INTERVAL_NANOS) fold()
         if (windowStartNanos == null) windowStartNanos = pending.atNanos
         window.addElevationReading(elevation.meters - appliedMotionMeters, accuracyMeters)
+        cachedSnapshot = null
         hasFix = true
         if (elevation.datum == ElevationDatum.MEAN_SEA_LEVEL) hasSeaLevelFix = true
         awaitingFreshFix = false
@@ -306,7 +318,7 @@ class ElevationSession @Inject constructor(
         awaitingFreshFix = awaitingFreshFix,
         signalStale = signalStale,
         pooled = pool != null && verdict() !is SessionPool.Verdict.Refuted,
-        snapshot = window.snapshot()
+        snapshot = currentSnapshot()
     )
 
     /**
@@ -325,34 +337,36 @@ class ElevationSession @Inject constructor(
 
     /** Folds the window into [pool] as one measurement, then empties it. */
     private fun fold() {
-        if (window.snapshot().readingCount > 0) {
+        val folded = currentSnapshot()
+        if (folded.readingCount > 0) {
             pool = when (val verdict = verdict()) {
                 is SessionPool.Verdict.Pooled -> verdict.estimate
-                SessionPool.Verdict.Refuted, null -> SessionPool.measurement(window.snapshot())
+                SessionPool.Verdict.Refuted, null -> SessionPool.measurement(folded)
                 SessionPool.Verdict.Undecided -> pool
             }
         }
         window.reset()
+        cachedSnapshot = null
         windowStartNanos = null
     }
 
     /** What the current window says about [pool]; null when either is missing. */
     private fun verdict(): SessionPool.Verdict? {
         val pool = pool ?: return null
-        val snapshot = window.snapshot()
-        if (snapshot.readingCount == 0) return null
-        return SessionPool.weigh(pool, SessionPool.measurement(snapshot), snapshot.readingCount)
+        val current = currentSnapshot()
+        if (current.readingCount == 0) return null
+        return SessionPool.weigh(pool, SessionPool.measurement(current), current.readingCount)
     }
 
     /** The height of the odometer's origin that the screen should show, if any. */
     private fun frameHeight(): Double? {
-        val snapshot = window.snapshot()
+        val current = currentSnapshot()
         val pool = pool
-        if (snapshot.readingCount == 0) return pool?.meters
-        if (pool == null) return snapshot.averageMeters
+        if (current.readingCount == 0) return pool?.meters
+        if (pool == null) return current.averageMeters
         return when (val verdict = verdict()) {
             is SessionPool.Verdict.Pooled -> verdict.estimate.meters
-            SessionPool.Verdict.Refuted -> snapshot.averageMeters
+            SessionPool.Verdict.Refuted -> current.averageMeters
             SessionPool.Verdict.Undecided, null -> pool.meters
         }
     }
@@ -366,6 +380,7 @@ class ElevationSession @Inject constructor(
     /** Discards the averaging window; the cached number stays available, dimmed. */
     private fun flush() {
         window.reset()
+        cachedSnapshot = null
         windowStartNanos = null
         epoch++
         if (hasFix) {

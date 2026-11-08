@@ -3,6 +3,7 @@ package com.bizzarosn.heightmark
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -38,7 +39,13 @@ class SerialConversion<T : Any, R>(
         inbox = channel
         consumer = scope.launch {
             for (item in channel) {
-                deliver(item, convert(item))
+                val result = convert(item)
+                // convert may finish after stop() cancelled the consumer: its
+                // result is then stale, and delivering it would commit a fix the
+                // session has already forgotten and re-arm the fix watchdog from
+                // a screen the user has left
+                if (!isActive) return@launch
+                deliver(item, result)
             }
         }
     }
