@@ -1,6 +1,9 @@
 package com.bizzarosn.heightmark
 
+import android.content.Context
 import android.content.Intent
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import android.os.Bundle
 import android.provider.Settings
 import android.util.TypedValue
@@ -81,6 +84,7 @@ class ElevationFragment : Fragment() {
         elevationLabel = view.findViewById(R.id.elevation_label)
         elevationTextView = view.findViewById(R.id.elevation_text_view)
         stabilityLine = view.findViewById(R.id.stability_line)
+        warnIfNoBarometer(view)
         blockedActionButton = view.findViewById(R.id.blocked_action_button)
         detailsToggle = view.findViewById(R.id.details_toggle)
         detailsPanel = view.findViewById(R.id.details_panel)
@@ -146,6 +150,18 @@ class ElevationFragment : Fragment() {
                 tracker.uiState.collect { render(it) }
             }
         }
+    }
+
+    /**
+     * Elevation comes from GNSS alone: the barometer only sharpens short height
+     * changes on top of it. A device without one still works, so the hero card
+     * says why the reading reacts slowly rather than failing or showing nothing.
+     */
+    private fun warnIfNoBarometer(view: View) {
+        val sensorManager =
+            requireContext().getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+        view.findViewById<TextView>(R.id.barometer_warning).isVisible =
+            sensorManager?.getDefaultSensor(Sensor.TYPE_PRESSURE) == null
     }
 
     override fun onResume() {

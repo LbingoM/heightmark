@@ -67,4 +67,7 @@
     <string name="detail_no_fix">Waiting for first fix…</string>
     <string name="value_meters">%1$s m</string>
     <string name="value_feet">%1$s ft</string>
+    <!-- Shown on the hero card when the device reports no pressure sensor:
+         elevation still works from GPS, but short height changes read slower -->
+    <string name="no_barometer_warning">No barometer on this device, so barometric height changes are unavailable (GPS elevation only)</string>
 </resources>

@@ -76,6 +76,20 @@
                     android:layout_height="24dp"
                     android:layout_marginTop="2dp" />
 
+                <!-- Visible only on a device with no pressure sensor; the
+                     fragment decides, so the layout never sets visibility. -->
+                <TextView
+                    android:id="@+id/barometer_warning"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="@string/no_barometer_warning"
+                    android:textColor="@color/hm_on_scrim_warning"
+                    android:textSize="13sp"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
                 <!-- Visible only while ElevationUiState.blockedAction is non-null;
                      the fragment sets both visibility and label, never the layout. -->
                 <com.google.android.material.button.MaterialButton

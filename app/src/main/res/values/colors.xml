@@ -36,4 +36,7 @@
     <color name="hm_on_scrim">#FFFFFFFF</color>
     <color name="hm_on_scrim_secondary">#E6FFFFFF</color>
     <color name="hm_on_scrim_outline">#B3FFFFFF</color>
+    <!-- Warning text on the scrimmed image. A light red keeps the ~4.5:1
+         contrast against the 60% black scrim that hm_on_scrim relies on. -->
+    <color name="hm_on_scrim_warning">#FFFF8A80</color>
 </resources>
