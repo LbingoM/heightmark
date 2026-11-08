@@ -35,6 +35,10 @@
          Referenced by both the layout and ScrimContrastTest. -->
     <color name="hm_on_scrim">#FFFFFFFF</color>
     <color name="hm_on_scrim_secondary">#E6FFFFFF</color>
+    <!-- Non-text only: the hero rule. At 60% white over the scrim floor it
+         measures ~3.2:1, which clears the 3:1 WCAG floor for graphics but not
+         the 4.5:1 that text needs — do not use it for text. -->
+    <color name="hm_on_scrim_tertiary">#99FFFFFF</color>
     <color name="hm_on_scrim_outline">#B3FFFFFF</color>
     <!-- Warning text on the scrimmed image. A light red keeps the ~4.5:1
          contrast against the 60% black scrim that hm_on_scrim relies on. -->

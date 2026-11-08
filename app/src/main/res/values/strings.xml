@@ -69,5 +69,5 @@
     <string name="value_feet">%1$s ft</string>
     <!-- Shown on the hero card when the device reports no pressure sensor:
          elevation still works from GPS, but short height changes read slower -->
-    <string name="no_barometer_warning">No barometer on this device, so barometric height changes are unavailable (GPS elevation only)</string>
+    <string name="no_barometer_warning">No barometer · GPS elevation only</string>
 </resources>

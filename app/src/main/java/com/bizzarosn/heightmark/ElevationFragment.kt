@@ -6,6 +6,10 @@ import android.hardware.Sensor
 import android.hardware.SensorManager
 import android.os.Bundle
 import android.provider.Settings
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
@@ -59,6 +63,12 @@ class ElevationFragment : Fragment() {
     /** The text appearance currently on the hero number; see [applyTextAppearance]. */
     private var appliedTextAppearanceAttr: Int? = null
 
+    /** The last whole number rendered, so a change can be given the lift. */
+    private var lastHeroValue: Int? = null
+
+    /** Set by [renderHero], consumed by [renderStabilityLine]'s animator. */
+    private var heroLiftPending = false
+
     private var useMetricUnit = true
     private var showDetails = false
     private var hasRequestedLocationPermission = false
@@ -90,6 +100,8 @@ class ElevationFragment : Fragment() {
         // A fresh view starts at the layout's default appearance; the cache
         // belongs to the view that is gone
         appliedTextAppearanceAttr = null
+        lastHeroValue = null
+        heroLiftPending = false
 
         elevationLabel = view.findViewById(R.id.elevation_label)
         elevationTextView = view.findViewById(R.id.elevation_text_view)
@@ -271,9 +283,39 @@ class ElevationFragment : Fragment() {
                 // the value on focus instead, with the unit spoken in full.
                 text.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_NONE
                 val formatted = LengthFormatter.hero(hero.meters, useMetricUnit)
-                text.text = getString(
-                    R.string.elevation_text, formatted.value, getString(formatted.unitRes)
-                )
+                val unit = getString(formatted.unitRes)
+                val rendered = getString(R.string.elevation_text, formatted.value, unit)
+                // In the hero's display size the unit stands as tall as the
+                // number, so the line reads as one block of text instead of a
+                // figure with a caption. Drop it to a caption and dim it.
+                val styled = SpannableString(rendered)
+                val unitStart = rendered.lastIndexOf(unit)
+                if (unit.isNotEmpty() && unitStart >= 0) {
+                    val unitEnd = unitStart + unit.length
+                    styled.setSpan(
+                        RelativeSizeSpan(UNIT_TEXT_SCALE),
+                        unitStart,
+                        unitEnd,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                    styled.setSpan(
+                        ForegroundColorSpan(
+                            requireContext().getColor(R.color.hm_on_scrim_secondary)
+                        ),
+                        unitStart,
+                        unitEnd,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+                text.text = styled
+                // An odometer step: the new figure rises into place. It is applied
+                // by renderStabilityLine, because a view has a single
+                // ViewPropertyAnimator and a second .start() would cancel the
+                // dim/undim animation it is already running
+                if (lastHeroValue != null && lastHeroValue != formatted.value) {
+                    heroLiftPending = true
+                }
+                lastHeroValue = formatted.value
                 text.contentDescription = getString(
                     if (ellipsoid) R.string.elevation_a11y_ellipsoid else R.string.elevation_a11y,
                     formatted.value,
@@ -299,8 +341,13 @@ class ElevationFragment : Fragment() {
         }
         line.isVisible = true
         line.setState(state)
+        if (heroLiftPending) {
+            heroLiftPending = false
+            text.translationY = HERO_LIFT_DP * resources.displayMetrics.density
+        }
         text.animate()
             .alpha(ReadingState.heroAlpha(state))
+            .translationY(0f)
             .setDuration(HERO_FADE_MS)
             .start()
     }
@@ -426,5 +473,11 @@ class ElevationFragment : Fragment() {
 
     companion object {
         private const val HERO_FADE_MS = 250L
+
+        /** The unit's size relative to the hero number it follows. */
+        private const val UNIT_TEXT_SCALE = 0.42f
+
+        /** How far the number rises into place when its whole value changes. */
+        private const val HERO_LIFT_DP = 8f
     }
 }

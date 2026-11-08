@@ -25,6 +25,13 @@
     <style name="ThemeOverlay.HeightMark.OnImage" parent="">
         <item name="colorOnSurface">@color/hm_on_scrim</item>
         <item name="colorOutline">@color/hm_on_scrim_outline</item>
+        <!-- Outlined buttons take their label and stroke from colorPrimary, and
+             their checked fill from it too. Left unset, both fall back to the
+             brand green, which is unreadable on the dark scrim: the unchecked
+             unit chip was invisible. Flipping the pair puts white on the label
+             and dark on the checked fill. -->
+        <item name="colorPrimary">@color/hm_on_scrim</item>
+        <item name="colorOnPrimary">@color/hm_on_image_on_checked_container</item>
         <item name="colorSecondaryContainer">@color/hm_on_image_checked_container</item>
         <item name="colorOnSecondaryContainer">@color/hm_on_image_on_checked_container</item>
     </style>

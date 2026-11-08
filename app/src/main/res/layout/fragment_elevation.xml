@@ -52,29 +52,53 @@
                 android:paddingTop="@dimen/scrim_fade_height"
                 android:paddingBottom="32dp">
 
+                <!-- The label steps back by size and tracking, not by opacity:
+                     dimming it below hm_on_scrim_secondary would drop it under
+                     the 4.5:1 that on-scrim text has to keep. -->
                 <TextView
                     android:id="@+id/elevation_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:letterSpacing="0.08"
                     android:text="@string/current_elevation"
                     android:textAppearance="?attr/textAppearanceLabelLargeEmphasized"
-                    android:textColor="@color/hm_on_scrim_secondary" />
+                    android:textColor="@color/hm_on_scrim_secondary"
+                    android:textSize="12sp" />
 
+                <!-- Tabular figures keep the number's width constant as the digit
+                     count changes, and the soft shadow reads as ink on the
+                     artwork instead of a sticker laid over it. -->
                 <TextView
                     android:id="@+id/elevation_text_view"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:fontFeatureSettings="tnum"
                     android:gravity="center"
+                    android:letterSpacing="-0.02"
                     android:maxLines="2"
+                    android:shadowColor="#40000000"
+                    android:shadowDx="0"
+                    android:shadowDy="2"
+                    android:shadowRadius="6"
                     android:text="@string/loading_elevation"
                     android:textAppearance="?attr/textAppearanceHeadlineSmall"
                     android:textColor="@color/hm_on_scrim" />
+
+                <!-- A short rule under the reading: the smallest gesture towards an
+                     instrument face, and it gives the eye a baseline to sit on. -->
+                <View
+                    android:id="@+id/hero_rule"
+                    android:layout_width="48dp"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@color/hm_on_scrim_tertiary"
+                    android:importantForAccessibility="no" />
 
                 <com.bizzarosn.heightmark.StabilityLineView
                     android:id="@+id/stability_line"
                     android:layout_width="200dp"
                     android:layout_height="24dp"
-                    android:layout_marginTop="2dp" />
+                    android:layout_marginTop="10dp" />
 
                 <!-- Visible only on a device with no pressure sensor; the
                      fragment decides, so the layout never sets visibility. -->
@@ -82,11 +106,11 @@
                     android:id="@+id/barometer_warning"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="14dp"
                     android:gravity="center"
                     android:text="@string/no_barometer_warning"
                     android:textColor="@color/hm_on_scrim_warning"
-                    android:textSize="13sp"
+                    android:textSize="12.5sp"
                     android:visibility="gone"
                     tools:visibility="visible" />
 
@@ -109,7 +133,7 @@
                     android:id="@+id/unit_toggle_group"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="18dp"
                     android:theme="@style/ThemeOverlay.HeightMark.OnImage"
                     app:selectionRequired="true"
                     app:singleSelection="true">
@@ -140,7 +164,7 @@
                     style="@style/Widget.Material3.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="14dp"
                     android:minHeight="@dimen/min_touch_target"
                     android:minWidth="@dimen/min_touch_target"
                     android:text="@string/details_show"

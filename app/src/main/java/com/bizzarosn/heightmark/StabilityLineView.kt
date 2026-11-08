@@ -218,9 +218,10 @@ internal fun StabilityLine(
                 val end = Offset(centerX + coreHalf, centerY)
                 val breath = 0.875f + 0.125f *
                     sin(2f * PI.toFloat() * (frameMillis % BREATH_PERIOD_MS) / BREATH_PERIOD_MS)
-                // Fake glow: a wide translucent under-stroke
+                // Fake glow: a wide translucent under-stroke, tinted glacier so
+                // the settled state reads as cold light rather than plain white
                 drawLine(
-                    Color.White, start, end, glowWidth, StrokeCap.Round,
+                    GLOW_COLOR, start, end, glowWidth, StrokeCap.Round,
                     alpha = StabilityLineView.GLOW_ALPHA * breath * active
                 )
                 drawLine(
@@ -301,6 +302,8 @@ private const val BREATH_PERIOD_MS = 4_000L
 // frames a second. At 50 ms it repainted 20 times a second for as long as the
 // screen was up, with the reading perfectly still.
 private const val SLOW_FRAME_INTERVAL_MS = 100L
+/** Glacier tint for the settled glow; same value as hm_tertiary_container. */
+private val GLOW_COLOR = Color(0xFFBCEBF2)
 private val STROKE_WIDTH = 3.dp
 private val GLOW_WIDTH = 9.dp
 private val MAX_AMPLITUDE = 6.dp

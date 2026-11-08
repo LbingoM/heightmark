@@ -54,5 +54,5 @@
     <string name="detail_no_fix">等待首次定位…</string>
     <string name="value_meters">%1$s 米</string>
     <string name="value_feet">%1$s 英尺</string>
-    <string name="no_barometer_warning">本机未检测到气压计，无法用气压变化精测高差（仅显示 GPS 海拔）</string>
+    <string name="no_barometer_warning">无气压计 · 仅 GPS 海拔</string>
 </resources>
