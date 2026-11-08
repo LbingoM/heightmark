@@ -98,10 +98,9 @@ jobs:
       - name: Assemble release
         env:
           KEYSTORE_FILE: ${{ runner.temp }}/personal.keystore
-        run: |
-          ./gradlew assembleRelease \
-            -PversionName=1.0.189-zh9 \
-            -PversionCode=11009
+        # The version comes from gradle.properties, so a build states its own
+        # version whether it ran here or on a workstation.
+        run: ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
