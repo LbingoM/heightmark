@@ -94,8 +94,8 @@ jobs:
           KEYSTORE_FILE: ${{ runner.temp }}/personal.keystore
         run: |
           ./gradlew assembleRelease \
-            -PversionName=1.0.187-zh \
-            -PversionCode=11001
+            -PversionName=1.0.187-zh2 \
+            -PversionCode=11002
 
       - name: Upload APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

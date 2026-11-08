@@ -46,12 +46,15 @@ class ElevationFragment : Fragment() {
 
     private val tracker: ElevationTracker by viewModels()
 
-    private lateinit var elevationLabel: TextView
-    private lateinit var elevationTextView: TextView
-    private lateinit var stabilityLine: StabilityLineView
-    private lateinit var blockedActionButton: MaterialButton
-    private lateinit var detailsToggle: TextView
-    private lateinit var detailsPanel: ViewGroup
+    // Null between onDestroyView and the next onViewCreated. They cannot stay
+    // lateinit: a Fragment outlives its view, and one child View reference keeps
+    // the whole destroyed hierarchy — and the Activity behind it — reachable.
+    private var elevationLabel: TextView? = null
+    private var elevationTextView: TextView? = null
+    private var stabilityLine: StabilityLineView? = null
+    private var blockedActionButton: MaterialButton? = null
+    private var detailsToggle: TextView? = null
+    private var detailsPanel: ViewGroup? = null
 
     /** The text appearance currently on the hero number; see [applyTextAppearance]. */
     private var appliedTextAppearanceAttr: Int? = null
@@ -140,7 +143,7 @@ class ElevationFragment : Fragment() {
             lifecycleScope.launch { preferencesRepository.setUseMetricUnit(useMetricUnit) }
         }
 
-        detailsToggle.setOnClickListener {
+        detailsToggle?.setOnClickListener {
             val show = !showDetails
             applyDetailsVisibility(show)
             lifecycleScope.launch { preferencesRepository.setShowDetails(show) }
@@ -148,7 +151,7 @@ class ElevationFragment : Fragment() {
 
         // Reads the action at click time so the listener is installed once;
         // with the details panel open, state republishes every second
-        blockedActionButton.setOnClickListener {
+        blockedActionButton?.setOnClickListener {
             tracker.uiState.value.blockedAction?.let(::performBlockedAction)
         }
 
@@ -182,6 +185,20 @@ class ElevationFragment : Fragment() {
         dismissLocationOffDialog()
     }
 
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // The views go with the view; the Fragment stays alive and must not hold
+        // a single one of them, or the destroyed tree survives until onDestroy.
+        elevationLabel = null
+        elevationTextView = null
+        stabilityLine = null
+        blockedActionButton = null
+        detailsToggle = null
+        detailsPanel = null
+        appliedTextAppearanceAttr = null
+        dismissLocationOffDialog()
+    }
+
     /**
      * Records that the system permission dialog has been triggered at least
      * once, so a later cold start never mistakes a returning, already-decided
@@ -197,9 +214,11 @@ class ElevationFragment : Fragment() {
 
     private fun applyDetailsVisibility(show: Boolean) {
         showDetails = show
-        detailsPanel.isVisible = show
-        detailsToggle.text = getString(if (show) R.string.details_hide else R.string.details_show)
-        detailsToggle.stateDescription = getString(
+        val panel = detailsPanel ?: return
+        val toggle = detailsToggle ?: return
+        panel.isVisible = show
+        toggle.text = getString(if (show) R.string.details_hide else R.string.details_show)
+        toggle.stateDescription = getString(
             if (show) R.string.details_state_expanded else R.string.details_state_collapsed
         )
         tracker.setDetailsVisible(show)
@@ -219,41 +238,43 @@ class ElevationFragment : Fragment() {
      * behind.
      */
     private fun renderHero(hero: ElevationUiState.Hero) {
+        val label = elevationLabel ?: return
+        val text = elevationTextView ?: return
         when (hero) {
             is ElevationUiState.Hero.Status -> {
-                elevationLabel.setText(R.string.current_elevation)
+                label.setText(R.string.current_elevation)
                 // Status messages use headline type; the hero display size is
                 // reserved for the value
                 applyTextAppearance(com.google.android.material.R.attr.textAppearanceHeadlineSmall)
                 // Status sentences run long ("Still searching…") and must not clip
-                elevationTextView.maxLines = 3
+                text.maxLines = 3
                 // Errors and search-status changes are the moments a screen-reader
                 // user must hear unprompted; the ticking elevation number is not
-                elevationTextView.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
-                elevationTextView.contentDescription = null
-                elevationTextView.text = getString(hero.messageRes)
+                text.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+                text.contentDescription = null
+                text.text = getString(hero.messageRes)
             }
             is ElevationUiState.Hero.Value -> {
                 // A height the device could not convert is not sea-level
                 // elevation, and the label over the number says so rather than
                 // letting it pass for one
                 val ellipsoid = hero.datum == ElevationDatum.ELLIPSOID
-                elevationLabel.setText(
+                label.setText(
                     if (ellipsoid) R.string.ellipsoid_elevation else R.string.current_elevation
                 )
                 applyTextAppearance(
                     com.google.android.material.R.attr.textAppearanceDisplayLargeEmphasized
                 )
-                elevationTextView.maxLines = 2
+                text.maxLines = 2
                 // The value refreshes ~every second while converging; a live region
                 // would make TalkBack announce every tick. Screen-reader users read
                 // the value on focus instead, with the unit spoken in full.
-                elevationTextView.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_NONE
+                text.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_NONE
                 val formatted = LengthFormatter.hero(hero.meters, useMetricUnit)
-                elevationTextView.text = getString(
+                text.text = getString(
                     R.string.elevation_text, formatted.value, getString(formatted.unitRes)
                 )
-                elevationTextView.contentDescription = getString(
+                text.contentDescription = getString(
                     if (ellipsoid) R.string.elevation_a11y_ellipsoid else R.string.elevation_a11y,
                     formatted.value,
                     getString(formatted.spokenUnitRes)
@@ -268,15 +289,17 @@ class ElevationFragment : Fragment() {
      * where a kinetic signal widget alongside would contradict it.
      */
     private fun renderStabilityLine(state: ReadingState?) {
+        val line = stabilityLine ?: return
+        val text = elevationTextView ?: return
         if (state == null) {
-            stabilityLine.isVisible = false
-            elevationTextView.animate().cancel()
-            elevationTextView.alpha = 1f
+            line.isVisible = false
+            text.animate().cancel()
+            text.alpha = 1f
             return
         }
-        stabilityLine.isVisible = true
-        stabilityLine.setState(state)
-        elevationTextView.animate()
+        line.isVisible = true
+        line.setState(state)
+        text.animate()
             .alpha(ReadingState.heroAlpha(state))
             .setDuration(HERO_FADE_MS)
             .start()
@@ -291,6 +314,7 @@ class ElevationFragment : Fragment() {
      */
     private fun renderDetails(facts: ElevationUiState.DetailsFacts?) {
         if (facts == null) return
+        val panel = detailsPanel ?: return
         val rows = DetailsPanelPresenter.rows(
             DetailsPanelPresenter.Input(
                 isIdle = facts.isIdle,
@@ -309,18 +333,18 @@ class ElevationFragment : Fragment() {
         )
         rows.forEachIndexed { index, row ->
             val text = resolve(row)
-            val rowView = detailsPanel.getChildAt(index) as? TextView
-                ?: createDetailsRowView().also { detailsPanel.addView(it, index) }
+            val rowView = panel.getChildAt(index) as? TextView
+                ?: createDetailsRowView(panel).also { panel.addView(it, index) }
             if (rowView.text != text) rowView.text = text
         }
-        while (detailsPanel.childCount > rows.size) {
-            detailsPanel.removeViewAt(detailsPanel.childCount - 1)
+        while (panel.childCount > rows.size) {
+            panel.removeViewAt(panel.childCount - 1)
         }
     }
 
-    private fun createDetailsRowView(): TextView =
+    private fun createDetailsRowView(parent: ViewGroup): TextView =
         LayoutInflater.from(requireContext())
-            .inflate(R.layout.item_detail_row, detailsPanel, false) as TextView
+            .inflate(R.layout.item_detail_row, parent, false) as TextView
 
     /** Resolves a presenter row, flattening the one nested length resource. */
     private fun resolve(row: DetailsPanelPresenter.Row): String {
@@ -369,12 +393,13 @@ class ElevationFragment : Fragment() {
      * dialog never strands the user without a way to retry.
      */
     private fun renderBlockedAction(action: ElevationUiState.BlockedAction?) {
+        val button = blockedActionButton ?: return
         if (action == null) {
-            blockedActionButton.isVisible = false
+            button.isVisible = false
             return
         }
-        blockedActionButton.isVisible = true
-        blockedActionButton.setText(action.labelRes)
+        button.isVisible = true
+        button.setText(action.labelRes)
     }
 
     private fun performBlockedAction(action: ElevationUiState.BlockedAction) {
@@ -387,6 +412,7 @@ class ElevationFragment : Fragment() {
     }
 
     private fun applyTextAppearance(textAppearanceAttr: Int) {
+        val text = elevationTextView ?: return
         // Applied on every repaint, which is once a second even when nothing but
         // the number changed. setTextAppearance requests a layout, so the whole
         // tree was being re-measured every second to produce the same result.
@@ -394,8 +420,8 @@ class ElevationFragment : Fragment() {
         appliedTextAppearanceAttr = textAppearanceAttr
         val resolved = TypedValue()
         requireContext().theme.resolveAttribute(textAppearanceAttr, resolved, true)
-        elevationTextView.setTextAppearance(resolved.resourceId)
-        elevationTextView.setTextColor(requireContext().getColor(R.color.hm_on_scrim))
+        text.setTextAppearance(resolved.resourceId)
+        text.setTextColor(requireContext().getColor(R.color.hm_on_scrim))
     }
 
     companion object {

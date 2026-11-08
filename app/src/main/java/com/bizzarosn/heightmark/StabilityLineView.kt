@@ -297,7 +297,10 @@ private fun Path.buildWave(
 private const val EPSILON = 0.005f
 private const val WAVE_PERIOD_MS = 1_400L
 private const val BREATH_PERIOD_MS = 4_000L
-private const val SLOW_FRAME_INTERVAL_MS = 50L
+// The settled state draws a slow breathing glow, which needs no more than ten
+// frames a second. At 50 ms it repainted 20 times a second for as long as the
+// screen was up, with the reading perfectly still.
+private const val SLOW_FRAME_INTERVAL_MS = 100L
 private val STROKE_WIDTH = 3.dp
 private val GLOW_WIDTH = 9.dp
 private val MAX_AMPLITUDE = 6.dp
