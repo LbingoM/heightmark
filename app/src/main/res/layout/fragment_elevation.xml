@@ -96,7 +96,7 @@
 
                 <com.bizzarosn.heightmark.StabilityLineView
                     android:id="@+id/stability_line"
-                    android:layout_width="160dp"
+                    android:layout_width="200dp"
                     android:layout_height="24dp"
                     android:layout_marginTop="10dp" />
 

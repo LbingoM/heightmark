@@ -513,6 +513,6 @@ class ElevationFragment : Fragment() {
         private const val STATUS_TEXT_SP = 20f
 
         /** Share of a labelled detail row taken by the value column. */
-        private const val LABELED_VALUE_WEIGHT = 0.58f
+        private const val LABELED_VALUE_WEIGHT = 0.66f
     }
 }

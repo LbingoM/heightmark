@@ -189,7 +189,7 @@ internal fun StabilityLine(
             val centerX = width / 2f
             val coreHalf = core.value * (centerX - inset)
 
-            if (amplitude.value > EPSILON) {
+            if (amplitude.value > EPSILON && core.value < 1f - EPSILON) {
                 wavePath.buildWave(
                     startX = inset,
                     endX = width - inset,
@@ -199,15 +199,18 @@ internal fun StabilityLine(
                     stepPx = WAVE_STEP.toPx(),
                     phase = (frameMillis % WAVE_PERIOD_MS).toFloat() / WAVE_PERIOD_MS
                 )
-                // The wave used to be drawn only where the settled core was not,
-                // which left two short stubs at the ends and read as an outlined
-                // pill. Draw it whole and set the core on top of it instead.
-                drawPath(
-                    wavePath,
-                    Color.White,
-                    alpha = StabilityLineView.WAVE_ALPHA * active,
-                    style = Stroke(strokeWidth, cap = StrokeCap.Round)
-                )
+                clipRect(
+                    left = centerX - coreHalf,
+                    right = centerX + coreHalf,
+                    clipOp = ClipOp.Difference
+                ) {
+                    drawPath(
+                        wavePath,
+                        Color.White,
+                        alpha = StabilityLineView.WAVE_ALPHA * active,
+                        style = Stroke(strokeWidth, cap = StrokeCap.Round)
+                    )
+                }
             }
 
             if (coreHalf > strokeWidth / 2f) {
