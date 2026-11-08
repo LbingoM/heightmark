@@ -11,9 +11,11 @@ import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.text.style.RelativeSizeSpan
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.ViewCompat
@@ -258,6 +260,9 @@ class ElevationFragment : Fragment() {
                 // Status messages use headline type; the hero display size is
                 // reserved for the value
                 applyTextAppearance(com.google.android.material.R.attr.textAppearanceHeadlineSmall)
+                // Prose, not a reading: at headline size a two-line Chinese
+                // sentence took over the whole hero area
+                text.textSize = STATUS_TEXT_SP
                 // Status sentences run long ("Still searching…") and must not clip
                 text.maxLines = 3
                 // Errors and search-status changes are the moments a screen-reader
@@ -353,11 +358,11 @@ class ElevationFragment : Fragment() {
     }
 
     /**
-     * Renders each [DetailsPanelPresenter.Row] as its own child TextView,
-     * recycled across calls and updated only where the resolved text
-     * changed — so a screen reader mid-readout on an untouched row never
-     * has that row's node rewritten under it, and the 1 Hz fix-age ticker
-     * invalidates only the one row it affects.
+     * Renders each [DetailsPanelPresenter.Row] as its own two-column child,
+     * recycled across calls and updated only where the resolved text changed —
+     * so a screen reader mid-readout on an untouched row never has that row's
+     * node rewritten under it, and the 1 Hz fix-age ticker invalidates only the
+     * one row it affects.
      */
     private fun renderDetails(facts: ElevationUiState.DetailsFacts?) {
         if (facts == null) return
@@ -378,20 +383,44 @@ class ElevationFragment : Fragment() {
                 locale = Locale.getDefault()
             )
         )
+        val separator = getString(R.string.detail_label_separator)
         rows.forEachIndexed { index, row ->
-            val text = resolve(row)
-            val rowView = panel.getChildAt(index) as? TextView
-                ?: createDetailsRowView(panel).also { panel.addView(it, index) }
-            if (rowView.text != text) rowView.text = text
+            // The presenter still builds one "label: value" string per row; the
+            // split into columns happens here so the presenter, and the tests
+            // that pin its output, stay untouched
+            val full = resolve(row)
+            val split = full.indexOf(separator)
+            val labelled = split > 0
+            val label = if (labelled) full.substring(0, split) else ""
+            val value = if (labelled) full.substring(split + separator.length) else full
+
+            val rowView = rowViewAt(panel, index)
+            val labelView = rowView.findViewById<TextView>(R.id.detail_label)
+            val valueView = rowView.findViewById<TextView>(R.id.detail_value)
+            if (labelView.text != label) labelView.text = label
+            labelView.isVisible = labelled
+            if (valueView.text != value) valueView.text = value
+            // A row with no label (the "no fix yet" note) keeps the full width
+            valueView.gravity = if (labelled) Gravity.END else Gravity.START
+            val weight = if (labelled) LABELED_VALUE_WEIGHT else 1f
+            val params = valueView.layoutParams as LinearLayout.LayoutParams
+            if (params.weight != weight) {
+                params.weight = weight
+                valueView.layoutParams = params
+            }
+            // One accessible node per row, carrying what the single TextView
+            // used to: the label node stays hidden from the screen reader
+            valueView.contentDescription = full
         }
         while (panel.childCount > rows.size) {
             panel.removeViewAt(panel.childCount - 1)
         }
     }
 
-    private fun createDetailsRowView(parent: ViewGroup): TextView =
-        LayoutInflater.from(requireContext())
-            .inflate(R.layout.item_detail_row, parent, false) as TextView
+    private fun rowViewAt(panel: ViewGroup, index: Int): View =
+        panel.getChildAt(index) ?: LayoutInflater.from(requireContext())
+            .inflate(R.layout.item_detail_row, panel, false)
+            .also { panel.addView(it, index) }
 
     /** Resolves a presenter row, flattening the one nested length resource. */
     private fun resolve(row: DetailsPanelPresenter.Row): String {
@@ -479,5 +508,11 @@ class ElevationFragment : Fragment() {
 
         /** How far the number rises into place when its whole value changes. */
         private const val HERO_LIFT_DP = 8f
+
+        /** Status sentences are prose; they are set below the headline size. */
+        private const val STATUS_TEXT_SP = 20f
+
+        /** Share of a labelled detail row taken by the value column. */
+        private const val LABELED_VALUE_WEIGHT = 0.58f
     }
 }

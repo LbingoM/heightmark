@@ -1,14 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-     One row of the diagnostic panel. A standalone leaf view, so each row
-     surfaces as its own accessibility node and TalkBack can navigate the
-     panel row by row instead of hearing it as one block.
+     One row of the diagnostic panel: a label column and a right-aligned value
+     column. The split is visual only — the value carries the whole row as its
+     content description and the label is hidden from accessibility, so TalkBack
+     still reads one row at a time, exactly as it did when this was one TextView.
 -->
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:lineSpacingExtra="3dp"
-    android:paddingVertical="5dp"
-    android:textAppearance="?attr/textAppearanceBodySmall"
-    android:textColor="@color/hm_on_scrim_secondary"
-    android:textSize="12.5sp" />
+    android:baselineAligned="true"
+    android:orientation="horizontal"
+    android:paddingVertical="5dp">
+
+    <TextView
+        android:id="@+id/detail_label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.42"
+        android:importantForAccessibility="no"
+        android:lineSpacingExtra="3dp"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="@color/hm_on_scrim_secondary"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/detail_value"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.58"
+        android:gravity="end"
+        android:lineSpacingExtra="3dp"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="@color/hm_on_scrim"
+        android:textSize="12.5sp" />
+</LinearLayout>

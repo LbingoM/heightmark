@@ -70,4 +70,6 @@
     <!-- Shown on the hero card when the device reports no pressure sensor:
          elevation still works from GPS, but short height changes read slower -->
     <string name="no_barometer_warning">No barometer · GPS elevation only</string>
+    <!-- Splits a detail row's "label: value" text into the panel's two columns -->
+    <string name="detail_label_separator">: </string>
 </resources>
