@@ -30,8 +30,8 @@ object DetailsPanelPresenter {
         val datum: ElevationDatum?,
         val useMetric: Boolean,
         val locale: Locale,
-        /** Nearest named place, already formatted; null hides the row. */
-        val nearby: String? = null
+        /** Province/city/district of the fix, already formatted; null hides the row. */
+        val region: String? = null
     )
 
     /**
@@ -94,8 +94,8 @@ object DetailsPanelPresenter {
                 )
             )
             // Directly under the coordinates, which it explains
-            input.nearby?.let { nearby ->
-                rows += Row(R.string.detail_nearby, listOf(nearby))
+            input.region?.let { region ->
+                rows += Row(R.string.detail_region, listOf(region))
             }
             rows += Row(
                 R.string.detail_fix_age,

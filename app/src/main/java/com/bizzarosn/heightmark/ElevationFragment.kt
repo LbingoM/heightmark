@@ -37,7 +37,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.roundToInt
 import java.util.Locale
 import javax.inject.Inject
 
@@ -77,8 +76,8 @@ class ElevationFragment : Fragment() {
     /** Set by [renderHero], consumed by [renderStabilityLine]'s animator. */
     private var heroLiftPending = false
 
-    /** Offline seat table; null until the asset has been read, or if it fails. */
-    private var nearbyPlaces: NearbyPlaces? = null
+    /** Offline region boundaries; null until the asset has been read, or if it fails. */
+    private var adminRegions: AdminRegions? = null
 
     private var useMetricUnit = true
     private var showDetails = false
@@ -152,13 +151,13 @@ class ElevationFragment : Fragment() {
             permissionHandler.checkPermission()
         }
 
-        // The place table is half a megabyte of JSON: read and index it off the
-        // main thread, then repaint once it is available
+        // The region table is 1.4 MB of JSON: read and index it off the main
+        // thread, then repaint once it is available
         val context = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
-            val places = withContext(Dispatchers.IO) { NearbyPlaces.load(context) }
+            val regions = withContext(Dispatchers.IO) { AdminRegions.load(context) }
             if (!isAdded) return@launch
-            nearbyPlaces = places
+            adminRegions = regions
             render(tracker.uiState.value)
         }
 
@@ -415,7 +414,7 @@ class ElevationFragment : Fragment() {
                 datum = facts.datum,
                 useMetric = useMetricUnit,
                 locale = Locale.getDefault(),
-                nearby = nearbyLabel(facts.location)
+                region = regionLabel(facts.location)
             )
         )
         val separator = getString(R.string.detail_label_separator)
@@ -453,22 +452,14 @@ class ElevationFragment : Fragment() {
     }
 
     /**
-     * "嘉黎县 · 62 公里" for the nearest seated place, or null when there is
-     * nothing worth saying: the table is still loading, the fix has no location,
-     * or the nearest seat is so far off (abroad, at sea) that it describes
-     * nothing about where the device is.
+     * "上海市 浦东新区" for the fix, or null when there is nothing worth saying:
+     * the table is still loading, the fix has no location, or the point falls
+     * outside the bundled boundaries.
      */
-    private fun nearbyLabel(location: Location?): String? {
-        val places = nearbyPlaces ?: return null
+    private fun regionLabel(location: Location?): String? {
+        val regions = adminRegions ?: return null
         val fix = location ?: return null
-        val place = places.nearest(fix.latitude, fix.longitude) ?: return null
-        if (place.meters > NEARBY_MAX_METERS) return null
-        val distance = if (place.meters < METERS_PER_KM / 2) {
-            getString(R.string.nearby_distance_under_1km)
-        } else {
-            getString(R.string.nearby_distance_km, (place.meters / METERS_PER_KM).roundToInt())
-        }
-        return getString(R.string.nearby_value, place.name, distance)
+        return regions.find(fix.latitude, fix.longitude)
     }
 
     private fun rowViewAt(panel: ViewGroup, index: Int): View =
@@ -574,15 +565,5 @@ class ElevationFragment : Fragment() {
 
         /** Gap between the details label and its chevron. */
         private const val CHEVRON_PADDING_DP = 4f
-
-        private const val METERS_PER_KM = 1000.0
-
-        /**
-         * Beyond this the nearest seat says nothing useful — the table covers
-         * China only, so a fix abroad would otherwise name a city thousands of
-         * kilometres away. 500 km still covers the empty stretches of Tibet and
-         * Xinjiang, where the nearest county seat can be a few hundred away.
-         */
-        private const val NEARBY_MAX_METERS = 500_000.0
     }
 }
