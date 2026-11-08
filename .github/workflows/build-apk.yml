@@ -1,4 +1,4 @@
-name: Build Debug APK
+name: Build APK
 
 # A fork-friendly build: skips lint, unit tests and the emulator suite that
 # android_build.yml gates on, so a personal build needs only a green compile.
@@ -45,5 +45,64 @@ jobs:
         with:
           name: heightmark-zh-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  # A minified, signed build: app/build.gradle.kts already turns on R8 and
+  # resource shrinking for the release type, and it reads its signing material
+  # from these four environment variables. Generating the key here instead of
+  # committing one keeps the repository free of secrets while still producing an
+  # installable APK. The output is the same package name as the Play/upstream
+  # build, so it cannot be installed alongside the official one.
+  release:
+    name: Assemble signed release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      KEYSTORE_PASSWORD: heightmark-local-keystore
+      KEY_ALIAS: personal
+      KEY_PASSWORD: heightmark-local-keystore
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up JDK
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          java-version-file: .tool-versions
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      # A throwaway key: it only has to sign this and later personal builds, and
+      # keeping the same key across runs means a new APK can upgrade the previous
+      # one instead of demanding an uninstall.
+      - name: Generate a personal signing key
+        run: |
+          keytool -genkeypair \
+            -keystore "$RUNNER_TEMP/personal.keystore" \
+            -alias "$KEY_ALIAS" \
+            -keyalg RSA \
+            -keysize 4096 \
+            -validity 10000 \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            -dname "CN=HeightMark Personal, O=Personal, C=CN"
+
+      - name: Assemble release
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/personal.keystore
+        run: |
+          ./gradlew assembleRelease \
+            -PversionName=1.0.187-zh \
+            -PversionCode=11001
+
+      - name: Upload APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: heightmark-zh-release-apk
+          path: |
+            app/build/outputs/apk/release/*.apk
+            !app/build/outputs/apk/release/*-unsigned.apk
           if-no-files-found: error
           retention-days: 30
