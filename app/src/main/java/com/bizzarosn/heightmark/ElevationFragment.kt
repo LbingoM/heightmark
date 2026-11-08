@@ -4,12 +4,15 @@ import android.content.Context
 import android.content.Intent
 import android.hardware.Sensor
 import android.hardware.SensorManager
+import android.location.Location
 import android.os.Bundle
 import android.provider.Settings
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.text.style.RelativeSizeSpan
+import android.transition.AutoTransition
+import android.transition.TransitionManager
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -30,8 +33,11 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 import java.util.Locale
 import javax.inject.Inject
 
@@ -70,6 +76,9 @@ class ElevationFragment : Fragment() {
 
     /** Set by [renderHero], consumed by [renderStabilityLine]'s animator. */
     private var heroLiftPending = false
+
+    /** Offline seat table; null until the asset has been read, or if it fails. */
+    private var nearbyPlaces: NearbyPlaces? = null
 
     private var useMetricUnit = true
     private var showDetails = false
@@ -141,6 +150,16 @@ class ElevationFragment : Fragment() {
             hasRequestedLocationPermission =
                 preferencesRepository.hasRequestedLocationPermission.first()
             permissionHandler.checkPermission()
+        }
+
+        // The place table is half a megabyte of JSON: read and index it off the
+        // main thread, then repaint once it is available
+        val context = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            val places = withContext(Dispatchers.IO) { NearbyPlaces.load(context) }
+            if (!isAdded) return@launch
+            nearbyPlaces = places
+            render(tracker.uiState.value)
         }
 
         // Both toggles repaint first and persist after: a DataStore write goes
@@ -230,8 +249,23 @@ class ElevationFragment : Fragment() {
         showDetails = show
         val panel = detailsPanel ?: return
         val toggle = detailsToggle ?: return
+        // The panel grows from a few rows to a dozen; animating the height keeps
+        // the hero from jumping between two frames
+        (panel.parent as? ViewGroup)?.let { container ->
+            TransitionManager.beginDelayedTransition(
+                container,
+                AutoTransition().setDuration(DETAILS_ANIM_MS)
+            )
+        }
         panel.isVisible = show
         toggle.text = getString(if (show) R.string.details_hide else R.string.details_show)
+        toggle.setCompoundDrawablesRelativeWithIntrinsicBounds(
+            0,
+            0,
+            if (show) R.drawable.ic_chevron_up else R.drawable.ic_chevron_down,
+            0
+        )
+        toggle.compoundDrawablePadding = (CHEVRON_PADDING_DP * resources.displayMetrics.density).toInt()
         toggle.stateDescription = getString(
             if (show) R.string.details_state_expanded else R.string.details_state_collapsed
         )
@@ -380,7 +414,8 @@ class ElevationFragment : Fragment() {
                 readingCount = facts.readingCount,
                 datum = facts.datum,
                 useMetric = useMetricUnit,
-                locale = Locale.getDefault()
+                locale = Locale.getDefault(),
+                nearby = nearbyLabel(facts.location)
             )
         )
         val separator = getString(R.string.detail_label_separator)
@@ -415,6 +450,25 @@ class ElevationFragment : Fragment() {
         while (panel.childCount > rows.size) {
             panel.removeViewAt(panel.childCount - 1)
         }
+    }
+
+    /**
+     * "嘉黎县 · 62 公里" for the nearest seated place, or null when there is
+     * nothing worth saying: the table is still loading, the fix has no location,
+     * or the nearest seat is so far off (abroad, at sea) that it describes
+     * nothing about where the device is.
+     */
+    private fun nearbyLabel(location: Location?): String? {
+        val places = nearbyPlaces ?: return null
+        val fix = location ?: return null
+        val place = places.nearest(fix.latitude, fix.longitude) ?: return null
+        if (place.meters > NEARBY_MAX_METERS) return null
+        val distance = if (place.meters < METERS_PER_KM / 2) {
+            getString(R.string.nearby_distance_under_1km)
+        } else {
+            getString(R.string.nearby_distance_km, (place.meters / METERS_PER_KM).roundToInt())
+        }
+        return getString(R.string.nearby_value, place.name, distance)
     }
 
     private fun rowViewAt(panel: ViewGroup, index: Int): View =
@@ -514,5 +568,21 @@ class ElevationFragment : Fragment() {
 
         /** Share of a labelled detail row taken by the value column. */
         private const val LABELED_VALUE_WEIGHT = 0.66f
+
+        /** Duration of the details panel's height animation. */
+        private const val DETAILS_ANIM_MS = 180L
+
+        /** Gap between the details label and its chevron. */
+        private const val CHEVRON_PADDING_DP = 4f
+
+        private const val METERS_PER_KM = 1000.0
+
+        /**
+         * Beyond this the nearest seat says nothing useful — the table covers
+         * China only, so a fix abroad would otherwise name a city thousands of
+         * kilometres away. 500 km still covers the empty stretches of Tibet and
+         * Xinjiang, where the nearest county seat can be a few hundred away.
+         */
+        private const val NEARBY_MAX_METERS = 500_000.0
     }
 }

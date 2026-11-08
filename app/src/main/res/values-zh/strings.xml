@@ -57,4 +57,8 @@
     <string name="no_barometer_warning">无气压计 · 仅 GPS 海拔</string>
     <!-- Splits a detail row's "label: value" text into the panel's two columns -->
     <string name="detail_label_separator">：</string>
+    <string name="detail_nearby">附近：%1$s</string>
+    <string name="nearby_value">%1$s · %2$s</string>
+    <string name="nearby_distance_km">%1$d 公里</string>
+    <string name="nearby_distance_under_1km">不足 1 公里</string>
 </resources>

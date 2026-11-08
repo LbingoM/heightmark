@@ -29,7 +29,9 @@ object DetailsPanelPresenter {
         val readingCount: Int,
         val datum: ElevationDatum?,
         val useMetric: Boolean,
-        val locale: Locale
+        val locale: Locale,
+        /** Nearest named place, already formatted; null hides the row. */
+        val nearby: String? = null
     )
 
     /**
@@ -91,6 +93,10 @@ object DetailsPanelPresenter {
                     location.longitude.fmt(input.locale, POSITION_DECIMALS)
                 )
             )
+            // Directly under the coordinates, which it explains
+            input.nearby?.let { nearby ->
+                rows += Row(R.string.detail_nearby, listOf(nearby))
+            }
             rows += Row(
                 R.string.detail_fix_age,
                 listOf(

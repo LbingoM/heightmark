@@ -72,4 +72,10 @@
     <string name="no_barometer_warning">No barometer · GPS elevation only</string>
     <!-- Splits a detail row's "label: value" text into the panel's two columns -->
     <string name="detail_label_separator">: </string>
+    <!-- Offline nearest administrative seat; the value is built from
+         nearby_value with a formatted distance -->
+    <string name="detail_nearby">Nearby: %1$s</string>
+    <string name="nearby_value">%1$s · %2$s</string>
+    <string name="nearby_distance_km">%1$d km</string>
+    <string name="nearby_distance_under_1km">&lt;1 km</string>
 </resources>

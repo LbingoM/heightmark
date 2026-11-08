@@ -13,4 +13,8 @@
     <issue id="GradleDependency" severity="informational" />
     <issue id="AndroidGradlePluginVersion" severity="informational" />
     <issue id="OldTargetApi" severity="informational" />
+    <!-- Same reasoning, and it is the one that actually bit: any dependency
+         publishing a patch release turned this into a build error, which took
+         lintDebug down before the unit tests could run. -->
+    <issue id="NewerVersionAvailable" severity="informational" />
 </lint>
